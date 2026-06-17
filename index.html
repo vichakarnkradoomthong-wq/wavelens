@@ -419,7 +419,12 @@ function switchTab(name,btn){
   document.getElementById('panel-'+name).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(function(b){b.className='tab-btn';});
   btn.classList.add(name==='transverse'?'active-t':name==='longitudinal'?'active-l':'active-c');
-  if(name==='compare') setTimeout(function(){resizeCmpCanvas();},60);
+  // panel เพิ่งแสดงผล ต้องวัดความกว้างใหม่ให้ canvas เต็มแถบ
+  setTimeout(function(){
+    if(name==='transverse') initT();
+    else if(name==='longitudinal') initL();
+    else if(name==='compare') resizeCmpCanvas();
+  },60);
 }
 
 /* ── SLIDER ── */
@@ -437,8 +442,8 @@ function setupCanvas(id,logH){
   var w=Math.max(parent.clientWidth||parent.offsetWidth||320,100);
   var h=logH||Math.round(w*0.38);
   cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
-  cv.style.height=h+'px';
-  var ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  cv.style.width=w+'px'; cv.style.height=h+'px';
+  var ctx=cv.getContext('2d'); ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
   cv._w=w; cv._h=h;
   return {cv:cv,ctx:ctx,w:w,h:h};
 }
@@ -507,7 +512,12 @@ function drawTransverse(){
 
 /* ── LONGITUDINAL ── */
 var N_L=34;
-function initL(){var s=setupCanvas('cvL',170);lCtx=s.ctx;}
+function initL(){
+  // ความสูง responsive: จอกว้าง (PC) ให้สูงขึ้น ป้องกันคลื่นดูแบน
+  var w=Math.max(document.getElementById('cvL').parentElement.clientWidth||320,100);
+  var h=w>700?300:(w>500?240:200);
+  var s=setupCanvas('cvL',h);lCtx=s.ctx;
+}
 function drawLongitudinal(){
   var cv=document.getElementById('cvL'),ctx=lCtx;
   if(!ctx||!cv._w){requestAnimationFrame(drawLongitudinal);return;}
@@ -524,34 +534,43 @@ function drawLongitudinal(){
   var sp=W/(N_L+1);
   var heroBase=Math.floor(N_L/2)*sp;
   var heroPhase=2*Math.PI*heroBase/lambda-lSim.phase;
+  // แถวของอนุภาคในแนวตั้ง (slinky) — เติมพื้นที่จอให้เต็ม ไม่ดูแบน
+  var bandTop=44, bandBot=H-26, bandH=bandBot-bandTop;
+  var rows=H>260?5:(H>210?4:3);
   for(var i=1;i<=N_L;i++){
     var baseX=i*sp,offset=A*Math.sin(2*Math.PI*baseX/lambda-lSim.phase),px=baseX+offset;
     var isHero=(i===Math.floor(N_L/2));
     var density=-Math.cos(2*Math.PI*baseX/lambda-lSim.phase);
-    var r=isHero?7:4;
-    var grd=ctx.createRadialGradient(px,cy,0,px,cy,r);
-    if(isHero){grd.addColorStop(0,'#fff');grd.addColorStop(0.4,'#ff2d78');grd.addColorStop(1,'rgba(255,45,120,0)');}
-    else{var rr=density>0?Math.round(200*density):0,al=0.4+0.5*Math.abs(density);grd.addColorStop(0,'rgba('+(110+rr)+',40,200,'+al+')');grd.addColorStop(1,'rgba(255,45,120,0)');}
-    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(px,cy,r,0,Math.PI*2);ctx.fill();
+    var al=0.35+0.55*Math.abs(density);
+    var rr=density>0?Math.round(200*density):0;
+    // วาดอนุภาคซ้ำในแนวตั้งหลายแถวเป็นแท่ง slinky
+    for(var rIdx=0;rIdx<rows;rIdx++){
+      var ry=bandTop+(bandH/(rows-1))*rIdx;
+      var r=isHero?6:3.5;
+      var grd=ctx.createRadialGradient(px,ry,0,px,ry,r);
+      if(isHero){grd.addColorStop(0,'#fff');grd.addColorStop(0.4,'#ff2d78');grd.addColorStop(1,'rgba(255,45,120,0)');}
+      else{grd.addColorStop(0,'rgba('+(110+rr)+',40,200,'+al+')');grd.addColorStop(1,'rgba(255,45,120,0)');}
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(px,ry,r,0,Math.PI*2);ctx.fill();
+    }
     if(isHero){
       if(lSim.trackParticle){
-        var vx=Math.cos(heroPhase),aLen=12;
+        var vx=Math.cos(heroPhase),aLen=14;
         ctx.strokeStyle='rgba(255,184,0,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
         ctx.beginPath();ctx.moveTo(heroBase-A-6,cy);ctx.lineTo(heroBase+A+6,cy);ctx.stroke();ctx.setLineDash([]);
         ctx.strokeStyle='#ffb800';ctx.fillStyle='#ffb800';ctx.lineWidth=2;
         ctx.beginPath();ctx.moveTo(px,cy);ctx.lineTo(px+vx*aLen,cy);ctx.stroke();
-        var ax=px+vx*aLen;ctx.beginPath();ctx.moveTo(ax,cy);ctx.lineTo(ax-vx*7,cy-4);ctx.lineTo(ax-vx*7,cy+4);ctx.closePath();ctx.fill();
+        var ax=px+vx*aLen;ctx.beginPath();ctx.moveTo(ax,cy);ctx.lineTo(ax-vx*8,cy-5);ctx.lineTo(ax-vx*8,cy+5);ctx.closePath();ctx.fill();
       }
-      ctx.font='bold 9px Kanit';ctx.fillStyle='#ff2d78';ctx.fillText('อนุภาค',px+9,cy-10);
+      ctx.font='bold 11px Kanit';ctx.fillStyle='#ff2d78';ctx.fillText('อนุภาค',px+10,bandTop-6);
     }
   }
   var compX=(lambda*0.25+((lSim.phase/(2*Math.PI))*lambda))%W;
   var rarX=(lambda*0.75+((lSim.phase/(2*Math.PI))*lambda))%W;
   [{x:compX,label:'อัด',color:'rgba(255,45,120,0.10)'},{x:rarX,label:'ขยาย',color:'rgba(0,212,255,0.07)'}].forEach(function(z){
     if(z.x>28&&z.x<W-28){
-      ctx.fillStyle=z.color;ctx.fillRect(z.x-24,32,48,H-48);
+      ctx.fillStyle=z.color;ctx.fillRect(z.x-24,bandTop-4,48,bandH+8);
       ctx.fillStyle=z.color.indexOf('255,45')>-1?'#ff2d78':'#00d4ff';
-      ctx.font='10px Kanit';ctx.fillText(z.label,z.x-14,H-8);
+      ctx.font='11px Kanit';ctx.fillText(z.label,z.x-14,H-8);
     }
   });
   if(lSim.running) lSim.phase+=lSim.freq*0.04;
@@ -567,8 +586,8 @@ function resizeCmpCanvas(){
     var w=Math.max(cv.parentElement.clientWidth||cv.parentElement.offsetWidth||280,100);
     var h=120;
     cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
-    cv.style.height=h+'px';
-    var ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+    cv.style.width=w+'px';cv.style.height=h+'px';
+    var ctx=cv.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
     cv._w=w;cv._h=h;
     if(idx===0)cmpT_ctx=ctx;else cmpL_ctx=ctx;
   });
@@ -624,8 +643,10 @@ window.addEventListener('load',function(){
   },80);
 });
 window.addEventListener('resize',function(){
-  initT();initL();
-  if(document.getElementById('panel-compare').classList.contains('active')) resizeCmpCanvas();
+  // วัดเฉพาะ canvas ของ panel ที่กำลังแสดง (panel ที่ซ่อนมีความกว้าง 0)
+  if(document.getElementById('panel-transverse').classList.contains('active')) initT();
+  else if(document.getElementById('panel-longitudinal').classList.contains('active')) initL();
+  else if(document.getElementById('panel-compare').classList.contains('active')) resizeCmpCanvas();
 });
 </script>
 </body>
