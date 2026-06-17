@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WaveLens — ห้องปฏิบัติการคลื่นเสมือน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #050e1a;
+    --surface:   #0d1f3c;
+    --border:    #1a3a6e;
+    --cyan:      #00d4ff;
+    --magenta:   #ff2d78;
+    --amber:     #ffb800;
+    --green:     #00ff9d;
+    --text:      #e8f4ff;
+    --muted:     #6a8fbe;
+    --mono:      'Share Tech Mono', monospace;
+    --thai:      'Kanit', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--thai);
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--cyan), var(--magenta));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { line-height: 1.1; }
+  .logo-text strong { font-size: 1.15rem; font-weight: 700; letter-spacing: 1px; color: var(--cyan); font-family: var(--mono); }
+  .logo-text span  { font-size: 0.7rem; color: var(--muted); display: block; }
+  .dev-tag { font-size: 0.72rem; color: var(--muted); text-align: right; line-height: 1.4; }
+  .dev-tag strong { color: var(--amber); font-weight: 600; }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex;
+    gap: 6px;
+    padding: 18px 28px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    padding: 9px 22px;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--thai);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative; bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--text); background: var(--surface); }
+  .tab-btn.active-t { color: var(--cyan);  background: var(--surface); border-color: var(--border); border-bottom-color: var(--surface); }
+  .tab-btn.active-l { color: var(--magenta); background: var(--surface); border-color: var(--border); border-bottom-color: var(--surface); }
+  .tab-btn.active-c { color: var(--amber);   background: var(--surface); border-color: var(--border); border-bottom-color: var(--surface); }
+
+  /* ── PANELS ── */
+  .panel { display: none; padding: 28px; }
+  .panel.active { display: block; }
+
+  /* ── SECTION GRID ── */
+  .section-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 860px) { .section-grid { grid-template-columns: 1fr; } }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .card-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+  .card-sub   { font-size: 0.78rem; color: var(--muted); margin-bottom: 14px; }
+
+  /* ── CANVAS ── */
+  .canvas-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: #020a14;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  canvas { display: block; width: 100%; }
+  .canvas-hint {
+    position: absolute; bottom: 8px; right: 10px;
+    font-size: 0.65rem; color: var(--muted);
+    font-family: var(--mono);
+    pointer-events: none;
+  }
+
+  /* ── SLIDERS ── */
+  .ctrl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .ctrl-label { font-size: 0.75rem; color: var(--muted); min-width: 130px; }
+  .ctrl-val   { font-family: var(--mono); font-size: 0.78rem; min-width: 52px; text-align: right; }
+  input[type=range] {
+    flex: 1; -webkit-appearance: none; height: 4px;
+    border-radius: 2px; outline: none; cursor: pointer;
+  }
+  input[type=range].cyan-slider  { background: linear-gradient(to right, var(--cyan)    var(--pct, 50%), #1a3a6e var(--pct, 50%)); }
+  input[type=range].mag-slider   { background: linear-gradient(to right, var(--magenta) var(--pct, 50%), #1a3a6e var(--pct, 50%)); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: #fff; border: 2px solid currentColor; cursor: pointer;
+  }
+  input[type=range].cyan-slider::-webkit-slider-thumb  { border-color: var(--cyan); }
+  input[type=range].mag-slider::-webkit-slider-thumb   { border-color: var(--magenta); }
+
+  /* ── FACT BOX ── */
+  .fact-box {
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.8rem;
+    line-height: 1.65;
+  }
+  .fact-box.cyan    { background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25); }
+  .fact-box.magenta { background: rgba(255,45,120,.08); border: 1px solid rgba(255,45,120,.25); }
+  .fact-box ul { padding-left: 1.1em; }
+  .fact-box li { margin-bottom: 4px; }
+  .fact-box .hi-c { color: var(--cyan);    font-weight: 600; }
+  .fact-box .hi-m { color: var(--magenta); font-weight: 600; }
+  .fact-box .hi-a { color: var(--amber);   font-weight: 600; }
+
+  /* ── FULL-WIDTH CANVAS for longitudinal ── */
+  .full-canvas-wrap {
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border); background: #020a14;
+    margin-bottom: 14px; position: relative;
+  }
+  .full-canvas-wrap canvas { display: block; width: 100%; }
+
+  /* ── COMPARE PANEL ── */
+  .compare-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 860px) { .compare-wrap { grid-template-columns: 1fr; } }
+
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .compare-card.tc { border-top: 3px solid var(--cyan); }
+  .compare-card.lc { border-top: 3px solid var(--magenta); }
+
+  /* ── SUMMARY TABLE ── */
+  .sum-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .sum-table th {
+    background: var(--border); padding: 10px 14px;
+    text-align: left; font-weight: 600;
+    color: var(--text);
+  }
+  .sum-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .sum-table tr:last-child td { border-bottom: none; }
+  .sum-table tr:hover td { background: rgba(255,255,255,.03); }
+
+  /* ── EQUATION BOX ── */
+  .eq-box {
+    background: var(--surface);
+    border: 1px solid var(--amber);
+    border-radius: 12px;
+    padding: 18px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .eq-main { font-family: var(--mono); font-size: 2rem; color: var(--amber); font-weight: 700; letter-spacing: 4px; }
+  .eq-legend { margin-top: 8px; font-size: 0.78rem; color: var(--muted); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 4px; font-size: 0.68rem;
+    font-weight: 700; font-family: var(--mono);
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .badge-c { background: rgba(0,212,255,.15); color: var(--cyan); }
+  .badge-m { background: rgba(255,45,120,.15); color: var(--magenta); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 18px;
+    font-size: 0.7rem; color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+  }
+
+  /* ── PLAY BUTTON ── */
+  .play-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-family: var(--thai);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background .2s;
+    margin-left: 8px;
+  }
+  .play-btn:hover { background: var(--border); }
+  .play-btn.running { border-color: var(--green); color: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon">🌊</div>
+    <div class="logo-text">
+      <strong>WaveLens</strong>
+      <span>ห้องปฏิบัติการคลื่นเสมือน · ฟิสิกส์ ม.4</span>
+    </div>
+  </div>
+  <div class="dev-tag">
+    สื่อประกอบการสอน หน่วยที่ 9: คลื่น<br>
+    พัฒนาโดย <strong>ครูยุพา ทองคำ</strong>
+  </div>
+</header>
+
+<!-- ═══ TABS ═══ -->
+<nav class="tab-bar">
+  <button class="tab-btn active-t" onclick="switchTab('transverse', this)">🔵 คลื่นตามขวาง</button>
+  <button class="tab-btn"         onclick="switchTab('longitudinal', this)">🔴 คลื่นตามยาว</button>
+  <button class="tab-btn"         onclick="switchTab('compare', this)">⚖️ เปรียบเทียบ</button>
+</nav>
+
+<!-- ═══════════════════════════════════════
+     PANEL 1 : TRANSVERSE WAVE
+═══════════════════════════════════════ -->
+<div id="panel-transverse" class="panel active">
+  <div class="section-grid">
+
+    <!-- Canvas card -->
+    <div class="card">
+      <div class="card-label" style="color:var(--cyan)">คลื่นตามขวาง · Transverse Wave</div>
+      <div class="card-title">สังเกตทิศการสั่นของอนุภาค</div>
+      <div class="card-sub">อนุภาคตัวกลางสั่น <strong style="color:var(--cyan)">ตั้งฉาก (⊥)</strong> กับทิศที่คลื่นเคลื่อนที่</div>
+
+      <div class="canvas-wrap">
+        <canvas id="cvT" height="220"></canvas>
+        <div class="canvas-hint">TRANSVERSE · LIVE SIM</div>
+      </div>
+
+      <!-- Controls -->
+      <div class="ctrl-row">
+        <span class="ctrl-label">แอมพลิจูด A</span>
+        <input type="range" id="tAmp" class="cyan-slider" min="10" max="80" value="50"
+               oninput="updateSlider(this,'tAmpVal','px'); tSim.amplitude=+this.value">
+        <span class="ctrl-val cyan-slider" id="tAmpVal" style="color:var(--cyan)">50 px</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">ความถี่ f</span>
+        <input type="range" id="tFreq" class="cyan-slider" min="1" max="10" step="0.5" value="3"
+               oninput="updateSlider(this,'tFreqVal','Hz'); tSim.freq=+this.value">
+        <span class="ctrl-val" id="tFreqVal" style="color:var(--cyan)">3 Hz</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">ความยาวคลื่น λ</span>
+        <input type="range" id="tLam" class="cyan-slider" min="60" max="300" value="160"
+               oninput="updateSlider(this,'tLamVal','px'); tSim.lambda=+this.value">
+        <span class="ctrl-val" id="tLamVal" style="color:var(--cyan)">160 px</span>
+      </div>
+      <div style="margin-top:10px">
+        <button class="play-btn running" id="tPlayBtn" onclick="toggleSim('t')">⏸ หยุด</button>
+        <button class="play-btn" onclick="highlightParticle('t')">🎯 ติดตามอนุภาค</button>
+      </div>
+    </div>
+
+    <!-- Fact card -->
+    <div class="card">
+      <div class="card-label" style="color:var(--cyan)">ความรู้สำคัญ</div>
+      <div class="card-title">คลื่นตามขวาง <span class="badge badge-c">Transverse</span></div>
+
+      <div class="fact-box cyan" style="margin-bottom:14px">
+        <ul>
+          <li><span class="hi-c">นิยาม:</span> คลื่นที่อนุภาคตัวกลางสั่นในแนวตั้งฉากกับทิศทางที่คลื่นเคลื่อนที่</li>
+          <li><span class="hi-a">ทิศอนุภาค:</span> ขึ้น–ลง <strong>↕</strong></li>
+          <li><span class="hi-a">ทิศพลังงาน:</span> ซ้าย → ขวา <strong>→</strong></li>
+          <li><span class="hi-c">ตัวอย่าง:</span> คลื่นในเส้นเชือก · คลื่นแสง · คลื่นวิทยุ · คลื่นผิวน้ำ</li>
+        </ul>
+      </div>
+
+      <div class="card-label" style="color:var(--amber); margin-bottom:6px">ส่วนประกอบคลื่น</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; font-size:0.8rem">
+        <div style="background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.2); border-radius:8px; padding:10px">
+          <div style="color:var(--cyan); font-weight:700; margin-bottom:4px">🏔 สันคลื่น (Crest)</div>
+          จุดสูงสุดของคลื่น อยู่เหนือแนวสมดุล
+        </div>
+        <div style="background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.2); border-radius:8px; padding:10px">
+          <div style="color:var(--magenta); font-weight:700; margin-bottom:4px">🏔 ท้องคลื่น (Trough)</div>
+          จุดต่ำสุดของคลื่น อยู่ใต้แนวสมดุล
+        </div>
+        <div style="background:rgba(255,184,0,.06); border:1px solid rgba(255,184,0,.2); border-radius:8px; padding:10px">
+          <div style="color:var(--amber); font-weight:700; margin-bottom:4px">📐 แอมพลิจูด (A)</div>
+          ระยะห่างสูงสุดจากแนวสมดุล
+        </div>
+        <div style="background:rgba(0,255,157,.06); border:1px solid rgba(0,255,157,.2); border-radius:8px; padding:10px">
+          <div style="color:var(--green); font-weight:700; margin-bottom:4px">📏 ความยาวคลื่น (λ)</div>
+          ระยะระหว่างสันคลื่นสองสันติดกัน
+        </div>
+      </div>
+
+      <div class="eq-box">
+        <div class="eq-main">v = f λ</div>
+        <div class="eq-legend">v = อัตราเร็ว (m/s) &nbsp;|&nbsp; f = ความถี่ (Hz) &nbsp;|&nbsp; λ = ความยาวคลื่น (m)</div>
+      </div>
+
+      <div class="fact-box cyan" style="font-size:0.76rem">
+        <span class="hi-a">⚡ จำไว้เสมอ:</span> อนุภาคตัวกลางไม่ได้เดินทางไปกับคลื่น มันสั่นอยู่กับที่
+        — <strong>พลังงาน</strong>เท่านั้นที่เคลื่อนที่ออกไป!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PANEL 2 : LONGITUDINAL WAVE
+═══════════════════════════════════════ -->
+<div id="panel-longitudinal" class="panel">
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-label" style="color:var(--magenta)">คลื่นตามยาว · Longitudinal Wave</div>
+    <div class="card-title">สังเกตการอัด-ขยายของอนุภาค</div>
+    <div class="card-sub">อนุภาคตัวกลางสั่น <strong style="color:var(--magenta)">ขนาน (∥)</strong> กับทิศที่คลื่นเคลื่อนที่</div>
+
+    <div class="full-canvas-wrap">
+      <canvas id="cvL" height="200"></canvas>
+      <div class="canvas-hint">LONGITUDINAL · LIVE SIM</div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px">
+      <div class="ctrl-row" style="flex-direction:column; align-items:flex-start; gap:6px">
+        <span class="ctrl-label">แอมพลิจูด A</span>
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          <input type="range" id="lAmp" class="mag-slider" min="5" max="40" value="22" style="flex:1"
+                 oninput="updateSlider(this,'lAmpVal','px'); lSim.amplitude=+this.value">
+          <span class="ctrl-val" id="lAmpVal" style="color:var(--magenta)">22 px</span>
+        </div>
+      </div>
+      <div class="ctrl-row" style="flex-direction:column; align-items:flex-start; gap:6px">
+        <span class="ctrl-label">ความถี่ f</span>
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          <input type="range" id="lFreq" class="mag-slider" min="1" max="10" step="0.5" value="3" style="flex:1"
+                 oninput="updateSlider(this,'lFreqVal','Hz'); lSim.freq=+this.value">
+          <span class="ctrl-val" id="lFreqVal" style="color:var(--magenta)">3 Hz</span>
+        </div>
+      </div>
+      <div style="display:flex; align-items:flex-end; gap:8px; padding-bottom:2px">
+        <button class="play-btn running" id="lPlayBtn" onclick="toggleSim('l')">⏸ หยุด</button>
+        <button class="play-btn" onclick="highlightParticle('l')">🎯 ติดตามอนุภาค</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-grid">
+    <div class="card">
+      <div class="card-label" style="color:var(--magenta)">ความรู้สำคัญ</div>
+      <div class="card-title">คลื่นตามยาว <span class="badge badge-m">Longitudinal</span></div>
+      <div class="fact-box magenta" style="margin-bottom:14px">
+        <ul>
+          <li><span class="hi-m">นิยาม:</span> คลื่นที่อนุภาคตัวกลางสั่นในแนวขนานกับทิศทางที่คลื่นเคลื่อนที่</li>
+          <li><span class="hi-a">ทิศอนุภาค:</span> ซ้าย–ขวา <strong>↔</strong></li>
+          <li><span class="hi-a">ทิศพลังงาน:</span> ซ้าย → ขวา <strong>→</strong></li>
+          <li><span class="hi-m">ตัวอย่าง:</span> คลื่นเสียง · คลื่นในสปริง (Slinky)</li>
+        </ul>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.8rem">
+        <div style="background:rgba(255,45,120,.08); border:1px solid rgba(255,45,120,.3); border-radius:8px; padding:10px">
+          <div style="color:var(--magenta); font-weight:700; margin-bottom:4px">🗜 ส่วนอัด (Compression)</div>
+          บริเวณที่อนุภาคเบียดกันหนาแน่น ความดันสูงกว่าปกติ
+        </div>
+        <div style="background:rgba(255,45,120,.08); border:1px solid rgba(255,45,120,.3); border-radius:8px; padding:10px">
+          <div style="color:var(--cyan); font-weight:700; margin-bottom:4px">💨 ส่วนขยาย (Rarefaction)</div>
+          บริเวณที่อนุภาคกระจายห่างกัน ความดันต่ำกว่าปกติ
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" style="color:var(--amber)">คลื่นเสียง — ตัวอย่างจริง</div>
+      <div class="fact-box magenta" style="font-size:0.8rem">
+        <ul>
+          <li>เสียงต้องเดินทางผ่าน <span class="hi-a">ตัวกลาง</span> เช่น อากาศ น้ำ ของแข็ง</li>
+          <li>ในอากาศ (25°C): v ≈ <span class="hi-m">346 m/s</span></li>
+          <li>ในน้ำ: v ≈ <span class="hi-m">1480 m/s</span></li>
+          <li>ในเหล็ก: v ≈ <span class="hi-m">5100 m/s</span></li>
+          <li>ในสุญญากาศ: <span class="hi-a">ไม่สามารถเดินทางได้!</span></li>
+        </ul>
+      </div>
+      <div class="eq-box" style="margin-top:14px; border-color:var(--magenta)">
+        <div class="eq-main" style="color:var(--magenta)">v = f λ</div>
+        <div class="eq-legend">สมการเดียวกับคลื่นตามขวาง</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PANEL 3 : COMPARE
+═══════════════════════════════════════ -->
+<div id="panel-compare" class="panel">
+
+  <div class="compare-wrap">
+    <div class="compare-card tc">
+      <div style="color:var(--cyan); font-weight:700; font-size:1rem; margin-bottom:10px">🔵 คลื่นตามขวาง</div>
+      <canvas id="cvCT" height="130" style="width:100%; border-radius:8px; background:#020a14; display:block; margin-bottom:10px"></canvas>
+      <div style="font-size:0.8rem; color:var(--muted)">ทิศอนุภาค <span style="color:var(--cyan); font-weight:600">⊥</span> ทิศคลื่น</div>
+    </div>
+    <div class="compare-card lc">
+      <div style="color:var(--magenta); font-weight:700; font-size:1rem; margin-bottom:10px">🔴 คลื่นตามยาว</div>
+      <canvas id="cvCL" height="130" style="width:100%; border-radius:8px; background:#020a14; display:block; margin-bottom:10px"></canvas>
+      <div style="font-size:0.8rem; color:var(--muted)">ทิศอนุภาค <span style="color:var(--magenta); font-weight:600">∥</span> ทิศคลื่น</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-label" style="color:var(--amber)">ตารางเปรียบเทียบ</div>
+    <table class="sum-table">
+      <thead>
+        <tr>
+          <th>หัวข้อ</th>
+          <th style="color:var(--cyan)">คลื่นตามขวาง</th>
+          <th style="color:var(--magenta)">คลื่นตามยาว</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ทิศอนุภาค</td>
+          <td>ตั้งฉากกับทิศคลื่น (⊥)</td>
+          <td>ขนานกับทิศคลื่น (∥)</td>
+        </tr>
+        <tr>
+          <td>รูปคลื่น</td>
+          <td>สันคลื่น–ท้องคลื่น</td>
+          <td>ส่วนอัด–ส่วนขยาย</td>
+        </tr>
+        <tr>
+          <td>ต้องอาศัยตัวกลาง?</td>
+          <td>ไม่เสมอไป (แสงไม่ต้อง)</td>
+          <td>ต้องอาศัยตัวกลางเสมอ</td>
+        </tr>
+        <tr>
+          <td>ตัวอย่าง</td>
+          <td>คลื่นแสง · เส้นเชือก · ผิวน้ำ</td>
+          <td>คลื่นเสียง · คลื่นในสปริง</td>
+        </tr>
+        <tr>
+          <td>สมการอัตราเร็ว</td>
+          <td colspan="2" style="text-align:center; color:var(--amber); font-family:var(--mono); font-weight:700">v = f λ</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-label" style="color:var(--amber)">แบ่งประเภทคลื่นตามตัวกลาง</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; font-size:0.82rem">
+      <div class="fact-box cyan">
+        <div class="hi-c" style="font-size:0.9rem; margin-bottom:6px">คลื่นกล (Mechanical Wave)</div>
+        <ul>
+          <li>ต้องอาศัยตัวกลางในการเดินทาง</li>
+          <li>ตัวอย่าง: คลื่นเสียง คลื่นน้ำ คลื่นในเส้นเชือก</li>
+          <li>รวมทั้งคลื่นตามขวางและตามยาว</li>
+        </ul>
+      </div>
+      <div class="fact-box magenta">
+        <div class="hi-m" style="font-size:0.9rem; margin-bottom:6px">คลื่นแม่เหล็กไฟฟ้า (EM Wave)</div>
+        <ul>
+          <li>ไม่ต้องอาศัยตัวกลาง เดินทางในสุญญากาศได้</li>
+          <li>ตัวอย่าง: แสง · คลื่นวิทยุ · รังสี X · ไมโครเวฟ</li>
+          <li>เป็นคลื่นตามขวางเสมอ · v = 3×10⁸ m/s</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  WaveLens · ห้องปฏิบัติการคลื่นเสมือน &nbsp;|&nbsp;
+  หน่วยที่ 9: คลื่น · วิชาฟิสิกส์ 1 (ว31101) · ชั้น ม.4 &nbsp;|&nbsp;
+  พัฒนาโดย <strong style="color:var(--amber)">ครูยุพา ทองคำ</strong>
+</footer>
+
+<!-- ═══════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════ -->
+<script>
+/* ── TAB SWITCHING ── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.className = 'tab-btn';
+  });
+  const cls = name === 'transverse' ? 'active-t' : name === 'longitudinal' ? 'active-l' : 'active-c';
+  btn.classList.add(cls);
+  if (name === 'compare') { resizeCmpCanvas(); }
+}
+
+/* ── SLIDER UTILITY ── */
+function updateSlider(el, valId, unit) {
+  const v = parseFloat(el.value);
+  const max = parseFloat(el.max); const min = parseFloat(el.min);
+  const pct = ((v - min) / (max - min) * 100).toFixed(1) + '%';
+  el.style.setProperty('--pct', pct);
+  document.getElementById(valId).textContent = v + ' ' + unit;
+}
+// Init sliders
+['tAmp','tFreq','tLam','lAmp','lFreq'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) { el.dispatchEvent(new Event('input')); }
+});
+
+/* ── SIM STATE ── */
+const tSim = { amplitude:50, freq:3, lambda:160, running:true, phase:0, trackParticle:false };
+const lSim = { amplitude:22, freq:3, running:true, phase:0, trackParticle:false };
+
+function toggleSim(which) {
+  const sim = which === 't' ? tSim : lSim;
+  const btn = document.getElementById(which + 'PlayBtn');
+  sim.running = !sim.running;
+  btn.textContent = sim.running ? '⏸ หยุด' : '▶ เล่น';
+  btn.className = sim.running ? 'play-btn running' : 'play-btn';
+}
+
+function highlightParticle(which) {
+  const sim = which === 't' ? tSim : lSim;
+  sim.trackParticle = !sim.trackParticle;
+}
+
+/* ── CANVAS SETUP ── */
+function setupCanvas(id) {
+  const cv = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const rect = cv.parentElement.getBoundingClientRect();
+  cv.width  = (rect.width  || 600) * dpr;
+  cv.height = parseInt(cv.getAttribute('height')) * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  cv._w = rect.width || 600;
+  cv._h = parseInt(cv.getAttribute('height'));
+  return { cv, ctx, w: cv._w, h: cv._h };
+}
+
+/* ── TRANSVERSE SIMULATION ── */
+const tCanvas = document.getElementById('cvT');
+let tCtx;
+const N_PARTICLES_T = 28;
+
+function initT() {
+  const s = setupCanvas('cvT');
+  tCtx = s.ctx;
+  tCanvas._w = s.w; tCanvas._h = s.h;
+}
+
+function drawTransverse() {
+  const cv = tCanvas;
+  const ctx = tCtx;
+  const W = cv._w, H = cv._h;
+  ctx.clearRect(0, 0, W, H);
+
+  // dark bg with subtle grid
+  ctx.fillStyle = '#020a14';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(26,58,110,0.5)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  const A = tSim.amplitude;
+  const lambda = tSim.lambda;
+  const cy = H / 2;
+
+  // equilibrium line
+  ctx.strokeStyle = 'rgba(0,212,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6,6]);
+  ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W,cy); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // wave curve
+  ctx.strokeStyle = 'rgba(0,212,255,0.45)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x < W; x++) {
+    const y = cy + A * Math.sin(2 * Math.PI * x / lambda - tSim.phase);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Energy arrow
+  const arrowY = cy - A - 22;
+  ctx.strokeStyle = '#ffb800'; ctx.fillStyle = '#ffb800';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(30, arrowY); ctx.lineTo(W - 30, arrowY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W - 30, arrowY); ctx.lineTo(W - 42, arrowY - 5); ctx.lineTo(W - 42, arrowY + 5); ctx.closePath(); ctx.fill();
+  ctx.font = '11px Kanit, sans-serif'; ctx.fillStyle = '#ffb800';
+  ctx.fillText('ทิศพลังงาน →', 36, arrowY - 4);
+
+  // Particles
+  const spacing = W / (N_PARTICLES_T + 1);
+  for (let i = 1; i <= N_PARTICLES_T; i++) {
+    const px = i * spacing;
+    const py = cy + A * Math.sin(2 * Math.PI * px / lambda - tSim.phase);
+    const isHero = (i === Math.floor(N_PARTICLES_T / 2));
+
+    if (tSim.trackParticle && isHero) {
+      // draw oscillation guide
+      ctx.strokeStyle = 'rgba(255,184,0,0.3)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3,4]);
+      ctx.beginPath(); ctx.moveTo(px, cy - A - 10); ctx.lineTo(px, cy + A + 10); ctx.stroke();
+      ctx.setLineDash([]);
+      // arrow showing particle direction
+      const vy = -Math.cos(2 * Math.PI * px / lambda - tSim.phase);
+      const aLen = 16;
+      ctx.strokeStyle = '#ffb800'; ctx.fillStyle = '#ffb800'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + vy * aLen); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px, py + vy * aLen);
+      ctx.lineTo(px - 4, py + vy * aLen - vy * 8);
+      ctx.lineTo(px + 4, py + vy * aLen - vy * 8);
+      ctx.closePath(); ctx.fill();
+    }
+
+    const r = isHero ? 9 : 5;
+    const grd = ctx.createRadialGradient(px, py, 0, px, py, r);
+    if (isHero) {
+      grd.addColorStop(0, '#ffffff');
+      grd.addColorStop(0.4, '#00d4ff');
+      grd.addColorStop(1, 'rgba(0,212,255,0)');
+    } else {
+      grd.addColorStop(0, 'rgba(0,212,255,0.9)');
+      grd.addColorStop(1, 'rgba(0,212,255,0)');
+    }
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+
+    if (isHero) {
+      ctx.font = 'bold 10px Kanit'; ctx.fillStyle = '#00d4ff';
+      ctx.fillText('อนุภาค', px + 12, py - 2);
+    }
+  }
+
+  // Labels: crest, trough, amplitude
+  const crestX = lambda / 4 + (((tSim.phase / (2*Math.PI)) * lambda) % lambda);
+  const cx_pos = ((crestX % W) + W) % W;
+  if (cx_pos > 20 && cx_pos < W - 20) {
+    ctx.fillStyle = 'rgba(0,212,255,0.15)';
+    ctx.fillRect(cx_pos - 28, cy - A - 18, 56, 16);
+    ctx.fillStyle = '#00d4ff'; ctx.font = '10px Kanit';
+    ctx.fillText('สันคลื่น', cx_pos - 22, cy - A - 5);
+
+    // amplitude arrow
+    ctx.strokeStyle = 'rgba(0,255,157,0.6)'; ctx.lineWidth = 1;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(cx_pos + 32, cy); ctx.lineTo(cx_pos + 32, cy - A); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#00ff9d'; ctx.font = '10px Kanit';
+    ctx.fillText('A', cx_pos + 35, cy - A/2 + 4);
+  }
+
+  if (tSim.running) tSim.phase += tSim.freq * 0.04;
+  requestAnimationFrame(drawTransverse);
+}
+
+/* ── LONGITUDINAL SIMULATION ── */
+const lCanvas = document.getElementById('cvL');
+let lCtx;
+const N_PARTICLES_L = 38;
+
+function initL() {
+  const s = setupCanvas('cvL');
+  lCtx = s.ctx;
+  lCanvas._w = s.w; lCanvas._h = s.h;
+}
+
+function drawLongitudinal() {
+  const cv = lCanvas;
+  const ctx = lCtx;
+  const W = cv._w, H = cv._h;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#020a14'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(26,58,110,0.5)'; ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  const A = lSim.amplitude;
+  const lambda = 180;
+  const cy = H / 2;
+
+  // Energy arrow
+  ctx.strokeStyle = '#ffb800'; ctx.fillStyle = '#ffb800';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(10, 22); ctx.lineTo(W - 10, 22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W - 10, 22); ctx.lineTo(W - 22, 17); ctx.lineTo(W - 22, 27); ctx.closePath(); ctx.fill();
+  ctx.font = '11px Kanit'; ctx.fillText('ทิศพลังงาน →', 14, 18);
+
+  // Labels for compression / rarefaction
+  const heroBase = W / 2;
+  const heroPhase = 2 * Math.PI * heroBase / lambda - lSim.phase;
+  const heroOffset = A * Math.sin(heroPhase);
+  const heroX = heroBase + heroOffset;
+
+  // Draw particles as vertical bars
+  const spacing = W / (N_PARTICLES_L + 1);
+  for (let i = 1; i <= N_PARTICLES_L; i++) {
+    const baseX = i * spacing;
+    const offset = A * Math.sin(2 * Math.PI * baseX / lambda - lSim.phase);
+    const px = baseX + offset;
+    const isHero = (i === Math.floor(N_PARTICLES_L / 2));
+    const r = isHero ? 8 : 5;
+
+    // Compute local density for coloring
+    const density = -Math.cos(2 * Math.PI * baseX / lambda - lSim.phase); // +1 = compression
+    const r_val = density > 0 ? Math.round(255 * density) : 0;
+    const b_val = density < 0 ? Math.round(255 * (-density)) : 0;
+
+    const grd = ctx.createRadialGradient(px, cy, 0, px, cy, r);
+    if (isHero) {
+      grd.addColorStop(0, '#ffffff');
+      grd.addColorStop(0.4, '#ff2d78');
+      grd.addColorStop(1, 'rgba(255,45,120,0)');
+    } else {
+      const alpha = 0.5 + 0.5 * Math.abs(density);
+      grd.addColorStop(0, `rgba(${120+r_val},${50},${200-b_val*0.5},${alpha})`);
+      grd.addColorStop(1, 'rgba(255,45,120,0)');
+    }
+
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(px, cy, r, 0, Math.PI * 2); ctx.fill();
+
+    if (isHero) {
+      if (lSim.trackParticle) {
+        // horizontal oscillation guide
+        ctx.strokeStyle = 'rgba(255,184,0,0.3)'; ctx.lineWidth = 1;
+        ctx.setLineDash([3,4]);
+        ctx.beginPath(); ctx.moveTo(heroBase - A - 10, cy); ctx.lineTo(heroBase + A + 10, cy); ctx.stroke();
+        ctx.setLineDash([]);
+        const vx = Math.cos(heroPhase);
+        const aLen = 14;
+        ctx.strokeStyle = '#ffb800'; ctx.fillStyle = '#ffb800'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(px, cy); ctx.lineTo(px + vx * aLen, cy); ctx.stroke();
+        ctx.beginPath();
+        const ax = px + vx * aLen;
+        ctx.moveTo(ax, cy);
+        ctx.lineTo(ax - vx * 8, cy - 4);
+        ctx.lineTo(ax - vx * 8, cy + 4);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.font = 'bold 10px Kanit'; ctx.fillStyle = '#ff2d78';
+      ctx.fillText('อนุภาค', px + 10, cy - 12);
+    }
+  }
+
+  // Mark compression / rarefaction zones
+  const compX = (lambda * 0.25 + ((lSim.phase/(2*Math.PI)) * lambda)) % W;
+  const rarX  = (lambda * 0.75 + ((lSim.phase/(2*Math.PI)) * lambda)) % W;
+  [{ x:compX, label:'อัด', color:'rgba(255,45,120,0.12)' },
+   { x:rarX,  label:'ขยาย', color:'rgba(0,212,255,0.08)' }].forEach(z => {
+    if (z.x > 30 && z.x < W - 30) {
+      ctx.fillStyle = z.color;
+      ctx.fillRect(z.x - 28, 40, 56, H - 60);
+      ctx.fillStyle = z.color.includes('255,45') ? '#ff2d78' : '#00d4ff';
+      ctx.font = '11px Kanit';
+      ctx.fillText(z.label, z.x - 14, H - 12);
+    }
+  });
+
+  if (lSim.running) lSim.phase += lSim.freq * 0.04;
+  requestAnimationFrame(drawLongitudinal);
+}
+
+/* ── COMPARE MINI CANVASES ── */
+let cmpT_ctx, cmpL_ctx, cmpT_phase = 0, cmpL_phase = 0;
+
+function resizeCmpCanvas() {
+  ['cvCT','cvCL'].forEach(id => {
+    const cv = document.getElementById(id);
+    const dpr = window.devicePixelRatio || 1;
+    const rect = cv.parentElement.getBoundingClientRect();
+    cv.width  = (rect.width || 300) * dpr;
+    cv.height = 130 * dpr;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    cv._w = rect.width || 300;
+    cv._h = 130;
+  });
+  cmpT_ctx = document.getElementById('cvCT').getContext('2d');
+  cmpL_ctx = document.getElementById('cvCL').getContext('2d');
+}
+
+function drawCmpT() {
+  const cv = document.getElementById('cvCT');
+  const ctx = cmpT_ctx;
+  if (!ctx || !cv._w) return;
+  const W = cv._w, H = cv._h, cy = H / 2, A = 36, lambda = 160;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#020a14'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(0,212,255,0.15)'; ctx.lineWidth=1; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W,cy); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(0,212,255,0.6)'; ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let x=0;x<W;x++){
+    const y = cy + A*Math.sin(2*Math.PI*x/lambda - cmpT_phase);
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  const spacing = W/14;
+  for(let i=1;i<=13;i++){
+    const px = i*spacing;
+    const py = cy + A*Math.sin(2*Math.PI*px/lambda - cmpT_phase);
+    const vy = -Math.cos(2*Math.PI*px/lambda - cmpT_phase);
+    ctx.strokeStyle='rgba(0,212,255,0.5)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px, py+vy*12); ctx.stroke();
+    ctx.fillStyle='#00d4ff';
+    ctx.beginPath(); ctx.arc(px,py,3.5,0,Math.PI*2); ctx.fill();
+  }
+  cmpT_phase += 0.04;
+}
+
+function drawCmpL() {
+  const cv = document.getElementById('cvCL');
+  const ctx = cmpL_ctx;
+  if (!ctx || !cv._w) return;
+  const W = cv._w, H = cv._h, cy = H/2, A=18, lambda=140;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#020a14'; ctx.fillRect(0,0,W,H);
+  const N=26, spacing=W/(N+1);
+  for(let i=1;i<=N;i++){
+    const baseX = i*spacing;
+    const offset = A*Math.sin(2*Math.PI*baseX/lambda - cmpL_phase);
+    const px = baseX+offset;
+    const density = -Math.cos(2*Math.PI*baseX/lambda - cmpL_phase);
+    const vx = Math.cos(2*Math.PI*baseX/lambda - cmpL_phase);
+    ctx.strokeStyle='rgba(255,45,120,0.5)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(px,cy); ctx.lineTo(px+vx*10, cy); ctx.stroke();
+    const alpha = 0.5 + 0.4*Math.abs(density);
+    ctx.fillStyle = `rgba(255,45,120,${alpha})`;
+    ctx.beginPath(); ctx.arc(px,cy,4,0,Math.PI*2); ctx.fill();
+  }
+  cmpL_phase += 0.04;
+}
+
+function animateCmp() {
+  drawCmpT(); drawCmpL();
+  requestAnimationFrame(animateCmp);
+}
+
+/* ── BOOT ── */
+window.addEventListener('load', () => {
+  initT();
+  initL();
+  drawTransverse();
+  drawLongitudinal();
+  // compare canvases init after small delay
+  setTimeout(() => {
+    resizeCmpCanvas();
+    animateCmp();
+  }, 200);
+});
+
+window.addEventListener('resize', () => {
+  initT(); initL();
+  resizeCmpCanvas();
+});
+</script>
+</body>
+</html>
